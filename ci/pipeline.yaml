@@ -1,0 +1,104 @@
+---
+resource_types:
+  - name: artifactory-resource
+    type: docker-image
+    source:
+      repository: pivotalservices/artifactory-resource
+      tag: latest
+
+  - name: maven-resource
+    type: docker-image
+    source:
+      repository: nulldriver/maven-resource
+      tag: latest
+
+  - name: ansible
+    type: docker-image
+    source:
+      repository: platformengineering/concourse-ansible-resource
+      tag: latest
+
+resources:
+  - name: source_code
+    type: git
+    source:
+      uri: {{auth_crewdock_repo}}
+      branch: {{auth_crewdock_branch}}
+      private_key: {{server_ssh_private_key}}
+      skip_ssl_verification: true
+
+  - name: build_artifact_resource
+    type: artifactory-resource
+    source:
+      endpoint: {{repo_uri}}
+      repository: "/example-repo-local/com/francisco/concourse/testcontainer/concourse-testcontainer/0.0.1-SNAPSHOT"
+      username: {{repo-username}}
+      password: {{repo-password}}
+      regex: "concourse-testcontainer-(?<version>.*).jar"
+
+  - name: ansible-executor
+    type: ansible
+    source:
+      private_key: {{ansible_private_key}}
+      remote_user: {{ansible_user}}
+      inventory:
+        hosts:
+          auth-crewdock:
+            - "192.168.66.32"
+
+jobs:
+  - name: build
+    serial: true
+    public: true
+    plan:
+      - get: source_code
+        trigger: true
+      - task: build_auth_crewdock
+        privileged: true
+        file: source_code/ci/01-build/maven.yaml
+        input_mapping:
+          source_code: source_code
+      - put: build_artifact_resource
+        params:
+          file: ./build/auth-crewdock*.jar
+
+
+  - name: deployment
+    serial: true
+    public: true
+    plan:
+      - get: build_artifact_resource
+        trigger: true
+        passed: [build]
+
+      - get: source_code
+        trigger: true
+        passed: [build]
+
+      - task: show_files
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: ubuntu
+              tag: "latest"
+          inputs:
+            - name: build_artifact_resource
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                ls -la build_artifact_resource
+      - put: ansible-executor
+        params:
+          src: "source_code/ansible"
+          inventory:
+            file: "hosts"
+          playbook: "site.yaml"
+          extra_vars: { artifactory: ((repo_uri)), repository: "/example-repo-local/com/francisco/concourse/testcontainer/concourse-testcontainer/0.0.1-SNAPSHOT/concourse-testcontainer-0.0.1-SNAPSHOT.jar" }
+
+
+
+...

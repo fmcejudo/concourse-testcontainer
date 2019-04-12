@@ -1,0 +1,64 @@
+---
+- hosts: auth-crewdock
+  tasks:
+    - name: print message
+      debug:
+        msg: "Hello world {{ artifactory }}{{ repository }}"
+
+    - name: download openjdk-12
+      get_url:
+        url: https://download.java.net/java/GA/jdk12/GPL/openjdk-12_linux-x64_bin.tar.gz
+        dest: /home/vagrant
+        mode: 0644
+
+    - name: Create jdk directory
+      become: true
+      file:
+        path: /usr/lib/jdk
+        state: directory
+        mode: 0755
+
+    - name: untar openjdk-12
+      become: true
+      unarchive:
+        src: /home/vagrant/openjdk-12_linux-x64_bin.tar.gz
+        dest: /usr/lib/jdk
+        remote_src: yes
+
+    - name: Set JAVA_HOME
+      become: true
+      lineinfile:
+        dest: /etc/environment
+        state: present
+        regexp: '^JAVA_HOME'
+        line: 'JAVA_HOME=/usr/lib/jdk/jdk-12'
+
+    - name: Set PATH
+      become: true
+      lineinfile:
+        dest: /home/vagrant/.profile
+        state: present
+        line: 'export PATH=/usr/lib/jdk/jdk-12/bin:$PATH'
+
+    - name: Refresh environment variables
+      become: true
+      shell: '. /etc/environment'
+
+    - name: Refresh environment variables
+      become: true
+      shell: '. /home/vagrant/.profile'
+
+    - name: Create deployment directory
+      file:
+        path: /home/vagrant/deployment
+        state: directory
+        mode: 0755
+
+    - name: Copy jar to remote location
+      get_url:
+        url: "{{ artifactory }}{{ repository }}"
+        dest: /home/vagrant/deployment
+
+
+
+...
