@@ -4,9 +4,8 @@ image_resource:
   type: docker-image
   #source: { repository: maven, tag: 3.6.0-jdk-12 }
   source: {
-    repository: framc83/dcind-jdk,
-    tag: 0.0.1,
-    privileged: true
+    repository: karlkfi/concourse-dcind,
+    tag: latest
   }
 
 inputs:
