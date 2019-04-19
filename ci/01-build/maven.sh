@@ -7,11 +7,5 @@ cd source_code || echo "missing input source_code: source_code"
 source /docker-lib.sh
 start_docker
 
-docker --version
-
-whoami
-
-docker ps
-
-#mvn verify ${MAVEN_ARGS}
+mvn compile test ${MAVEN_ARGS}
 

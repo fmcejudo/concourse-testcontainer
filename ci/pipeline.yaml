@@ -1,34 +1,15 @@
 ---
-resource_types:
-  - name: artifactory-resource
-    type: docker-image
-    source:
-      repository: pivotalservices/artifactory-resource
-      tag: latest
-
-  - name: maven-resource
-    type: docker-image
-    source:
-      repository: nulldriver/maven-resource
-      tag: latest
-
-  - name: ansible
-    type: docker-image
-    source:
-      repository: platformengineering/concourse-ansible-resource
-      tag: latest
-
 resources:
   - name: source_code
     type: git
     source:
-      uri: {{auth_crewdock_repo}}
-      branch: {{auth_crewdock_branch}}
+      uri: {{test_container_repo}}
+      branch: {{test_container_branch}}
       private_key: {{server_ssh_private_key}}
       skip_ssl_verification: true
 
 jobs:
-  - name: build
+  - name: integration-tests
     serial: true
     public: true
     plan:
