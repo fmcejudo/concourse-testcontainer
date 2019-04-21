@@ -16,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static java.lang.String.format;
@@ -50,7 +51,7 @@ public class EmailServiceTest {
 
         var emailContext = EmailService.EmailContext.builder()
                 .from("sender@example.es")
-                .recipients(List.of("a@example.es", "b@example.es"))
+                .recipients(Arrays.asList("a@example.es", "b@example.es", null))
                 .subject("example mail")
                 .content("My nice content in the email!!")
                 .build();

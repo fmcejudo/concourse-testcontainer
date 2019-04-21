@@ -1,0 +1,159 @@
+:article:
+= RUNNING INTEGRATION TESTS WITH TESTCONTAINERS IN CONCOURSE WITH MAVEN AND JAVA 12
+Francisco Miguel Cejudo <fmcejudo@gmail.com>
+
+:toc-title: Table of Content
+:toc:
+:toclevels: 2
+
+:imagesdir: images
+
+== About the author
+
+I am a developer working from Ryanair, an airline company in which we have freedom to practice and play with technologies.
+Also a proud Spring fan and keen on practicing around the nice topics offered by Pivotal.
+
+== About the practice
+
+The aim of this practice is running integration test with Testcontainer and run those tests inside Concourse as CI/CD tool.
+
+== Test Containers
+
+I am not going to write that much about this tools or present anything around it, the web is plenty of documentation and
+it says much more about what I might say. You might find it at link:
+
+`https://www.testcontainers.org/`
+
+But instead how use this nice tool, which let's use services
+which might not be ready when we are running our tests or tests shouldn't change the state of the environment after running them.
+
+There is a big community behind and it is not just for containers you built or relational databases, but also for AWS services
+which might have an extra cost just because you want to run tests.
+
+Also happy to say that it is not just for Java language, but other developers also might take advantage of it.
+
+Take a look and don't miss out the opportunity to write more reliable integration tests with the third parties involved
+when you are doing your convoluted application.
+
+== Concourse
+
+People like to take new flavours and this is one of those that is easy to take. It does not mean it is going to take over any other, but
+worthy giving it a try and check how easy is start with it. It has some nuances, I think because its maturity as it was release in 2014 and sometimes might annoy,
+but I can't leave it now, I don't know if this is because I work for an airline industry or because Pivotal supports it or what another reasons.
+
+`https://concourse-ci.org/docs.html`
+
+This is mostly flying everywhere and one of the most engaging features is that I can check its progress in the command line,
+isn't it that awesome?
+
+This builds jobs with their plans, plans made of steps, steps which are resources, and resources which are docker containers, isolated each other.
+Which are given inputs and they return outputs. Resources can download your source code, build your artifact and push it to your repository and if everything is OK
+then you might want to deploy it into a platform or service. Decide everything you want to do in your pipeline.
+
+Also it is nice to say that you don't need to have many plugins installed or you don't need to run it always in the
+same setup CI/CD environment, you just pop a container image, take your params, merge them into the pipeline and run
+your pipeline in it. This docker image can be in your host, in your partner host or remotely in a server, as far as you
+have access to the environments you defined in your pipeline it will happily run the steps for you.
+
+== Sample Practice
+
+Having said that and taking into consideration that as developers we like playing with new technology, we can find out there
+Java 12 (OpenJDK if you  don't have a license, so do I!) what is the latest version until now and we want to use it,
+but with the downside of the lack of those containers or resources in which those steps run and Testcontainers running with docker, what means
+`docker in docker with Java 12 and maven 3.6+`. We can't say this is not fun.
+
+So this practice is made of two repositories actually, one of which is creating that docker image with all that installed
+to let Concourse use it in its pipeline.
+
+We can find this repo at:
+
+`https://github.com/fmcejudo/dcind-jdk/tree/updating_jdk_12`
+
+and the built image at:
+
+`framc83/dcind-jdk`
+
+The other is this one with the source code:
+
+`https://github.com/fmcejudo/concourse-testcontainer`
+
+in which we can find the ci folder containing the pipeline definition.
+A very simple one, which just take the source code and runs its tests.
+
+In the source code, everything we have is a service which sends emails in a very simple way and it sends the emails when the application starts up.
+
+In the test side, we check that emails are sent, popping up a docker image, configuring JavaMail to use this smtp server
+and asserting the emails are in the server.
+
+== Running the practice
+
+In order to have this practice up and running, we need to have concourse installed somewhere accessible from our host, probably the simplest way
+is with docker in our own machine. The steps to do so can be found at:
+
+https://github.com/concourse/concourse-docker
+
+Once we have concourse ready and `fly` client install in our host with the same version as the target concourse has, we are ready to kick off
+our pipeline.
+
+To have an example of concourse url, let's say that our concourse is at: `http://localhost:8070` because we have configured so.
+
+So, firstly we have to login in a target at concourse:
+
+`fly -t <target> login --concourse-url http://localhost:8070 -u <your_user> -p <your_password>`
+
+If you want to inspect your targets or you want to wipe them out or you did something really bad and mess up your targets,
+you always can access to you `~/.flyrc` and remove the block or blocks or even remove it.
+
+After you connect to your remote ci tool, you might want to set up this pipeline, let's start from the root folder of the project:
+
+`fly -t <target> set-pipeline -p <your_pipeline_name> -c ci/pipeline.yaml -l credentials.yaml`
+
+image::pipeline.png[]
+
+Bare in mind that `credentials.yaml` is not pushed to the remote source repository as this might contain sensitive information about the
+developer. And instead you have been given a template you need to fill out and move to the file `credentials.yaml` which is the
+actual file which contains the properties which are merged into the pipeline.
+
+Once you accept the pipeline and you check everything is what you want, then you need to unpause the pipeline. By default the pipeline is
+paused. It is fine if you just go to the web and unpause the pipeline, but it is not that fun, so enjoy doing it manually with:
+
+`fly -t <target> unpause-pipeline -p <your_pipeline_name>`
+
+Now your pipeline will start soon, checking the source code in the git repository and pulling it into the steps to run, you will see
+that in the web, but for nerds you might want to check everything in running in your target concourse and observe a particular one.
+
+`fly -t <target> builds` showing everything what happen in concourse.
+
+`fly -t <target> watch -j <your_pipeline_name>/integration-tests` will show the same progress as the web does,
+but in your terminal.
+
+Finally if you want to trigger again your pipeline or further on when you have more jobs and you want to trigger
+from a given one, you might want to use
+
+`fly -t <target> trigger-job -j <your_pipeline_name>/integration-tests`
+
+When everything is ok, when you want to release resources or your pipeline is not needed or you want to change instead,
+in other words you want to get rid of your pipeline, just do:
+
+`fly -t <target> destroy-pipeline -p <your_pipeline_name>`
+
+Also you can drop your concourse ci and when you want to come back you can pop it again without reconfigure anything,
+concourse does not need it!
+
+So, multiple benefits of running concourse as your ci, but for me the winner has been to be able to do it in my own,
+no waiting for other members of the team to finish their jobs to run mine, we can have multiple concourse ci for free
+and no paying the pain of configure specific plugins.
+
+== Reviewing the outputs of the practice
+
+Nothing super fancy has been done in here, we are not deploying to any platform, we are not caching heavy resources
+for the coming up process, but we are able to run our integration tests within `Testcontainer`
+which are container inside containers with `maven` and `java 12`.
+
+So, if you see the job with the task `test_app` you will see the test passed and docker run inside.
+
+image::running_step.png[]
+
+
+
+
